@@ -8,7 +8,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 # Load API key from environment
 load_dotenv()
-os.environ['LANGCHAIN_API_KEY'] = "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"
+os.environ['LANGCHAIN_API_KEY'] = os.getenv("LANGCHAIN_API_KEY")
 os.environ['LANGCHAIN_TRACING_V2'] = "true"
 os.environ['LANGCHAIN_PROJECT'] = "Hiring Assistant Chatbot"
 
