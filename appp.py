@@ -5,33 +5,34 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-# Load API key from Streamlit secrets or fallback to .env
-if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    langchain_api_key = st.secrets.get("LANGCHAIN_API_KEY", "")
-else:
+# Load API keys from st.secrets (for deployment) or .env (for local dev)
+langchain_api_key = st.secrets.get("LANGCHAIN_API_KEY", None)
+google_api_key = st.secrets.get("GOOGLE_API_KEY", None)
+
+if not google_api_key:
     from dotenv import load_dotenv
     load_dotenv()
-    api_key = os.getenv("GOOGLE_API_KEY")
+    google_api_key = os.getenv("GOOGLE_API_KEY")
     langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
 
-# LangChain environment variables
-os.environ["LANGCHAIN_API_KEY"] = langchain_api_key
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_PROJECT"] = "Hiring Assistant Chatbot"
+# Set environment variables if available
+if langchain_api_key:
+    os.environ["LANGCHAIN_API_KEY"] = langchain_api_key
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_PROJECT"] = "Hiring Assistant Chatbot"
 
-# Session state init
+# Initialize session state
 if "stage" not in st.session_state:
     st.session_state.stage = "intro"
     st.session_state.candidate_info = {}
 
-# Prompt setup
+# Prompt template
 question_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful hiring assistant. Ask 3 to 5 technical questions based on the tech stack provided."),
     ("user", "Tech Stack: {tech_stack}")
 ])
 
-# LLM function
+# Define LLM logic
 def generate_questions(tech_stack, model_name, api_key):
     genai.configure(api_key=api_key)
     llm = ChatGoogleGenerativeAI(model=model_name)
@@ -54,7 +55,7 @@ def reset():
 
 st.sidebar.button("🔄 Reset Chat", on_click=reset)
 
-# Chat stages
+# Chat Flow Logic
 if st.session_state.stage == "intro":
     st.write("👋 Hello! I'm TalentScout AI, here to assist with your job application.")
     st.write("Let's get started. Please fill in the following:")
@@ -83,7 +84,7 @@ elif st.session_state.stage == "tech_stack":
         if tech_stack:
             st.session_state.candidate_info["tech_stack"] = tech_stack
             with st.spinner("Generating technical questions..."):
-                questions = generate_questions(tech_stack, llm_model, api_key)
+                questions = generate_questions(tech_stack, llm_model, google_api_key)
                 st.session_state.generated_questions = questions
                 st.session_state.stage = "questions"
         else:
