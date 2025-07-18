@@ -1,29 +1,37 @@
 import os
 import streamlit as st
-from dotenv import load_dotenv
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-# Load API key from environment
-load_dotenv()
-os.environ['LANGCHAIN_API_KEY'] = os.getenv("LANGCHAIN_API_KEY")
-os.environ['LANGCHAIN_TRACING_V2'] = "true"
-os.environ['LANGCHAIN_PROJECT'] = "Hiring Assistant Chatbot"
+# Load API key from Streamlit secrets or fallback to .env
+if "GOOGLE_API_KEY" in st.secrets:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    langchain_api_key = st.secrets.get("LANGCHAIN_API_KEY", "")
+else:
+    from dotenv import load_dotenv
+    load_dotenv()
+    api_key = os.getenv("GOOGLE_API_KEY")
+    langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
 
-# Initialize session state
+# LangChain environment variables
+os.environ["LANGCHAIN_API_KEY"] = langchain_api_key
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = "Hiring Assistant Chatbot"
+
+# Session state init
 if "stage" not in st.session_state:
     st.session_state.stage = "intro"
     st.session_state.candidate_info = {}
 
-# Initialize prompt templates
+# Prompt setup
 question_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a helpful hiring assistant. Ask 3 to 5 technical questions based on the tech stack provided."),
     ("user", "Tech Stack: {tech_stack}")
 ])
 
-# Define LLM
+# LLM function
 def generate_questions(tech_stack, model_name, api_key):
     genai.configure(api_key=api_key)
     llm = ChatGoogleGenerativeAI(model=model_name)
@@ -36,7 +44,6 @@ def generate_questions(tech_stack, model_name, api_key):
 st.title("💼 TalentScout Hiring Assistant")
 
 st.sidebar.title("Configuration")
-api_key = st.sidebar.text_input("Enter your GenAI API key", type="password")
 llm_model = st.sidebar.selectbox("Select LLM", ["gemini-1.5-flash-8b-latest", "gemma-7b", "flan-t5-xl"])
 temperature = st.sidebar.slider("Temperature", 0.0, 1.0, 0.7)
 max_tokens = st.sidebar.slider("Max Tokens", 50, 300, 150)
@@ -47,7 +54,7 @@ def reset():
 
 st.sidebar.button("🔄 Reset Chat", on_click=reset)
 
-# Chat Flow
+# Chat stages
 if st.session_state.stage == "intro":
     st.write("👋 Hello! I'm TalentScout AI, here to assist with your job application.")
     st.write("Let's get started. Please fill in the following:")
@@ -91,15 +98,3 @@ elif st.session_state.stage == "conclude":
     st.write("✅ Thank you for completing the initial screening!")
     st.write("Our team will review your answers and contact you at the provided email/phone.")
     st.write("Good luck with your application! 🚀")
-
-# import google.generativeai as genai
-
-
-# genai.configure(api_key="********************************************8")
-
-# models = genai.list_models()
-
-# for model in models:
-#     print(f"Model name: {model.name}")
-#     print(f"Supported methods: {model.supported_generation_methods}")
-#     print("="*40)
